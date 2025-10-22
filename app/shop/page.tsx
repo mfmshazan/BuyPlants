@@ -1,16 +1,71 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProductCard from '@/components/ProductCard';
+
+interface Product {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  originalPrice?: number;
+  size: string;
+  image: string;
+  category: string;
+  tags: string[];
+  inStock: boolean;
+  stockQuantity: number;
+  rating: number;
+  reviews: number;
+  careLevel: string;
+  lightRequirement: string;
+  petFriendly: boolean;
+  badge?: string;
+}
 
 export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSize, setSelectedSize] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedPetFriendly, setSelectedPetFriendly] = useState('all');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch products from MongoDB API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        
+        if (selectedCategory !== 'all') params.append('category', selectedCategory);
+        if (selectedSize !== 'all') params.append('size', selectedSize);
+        if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
+        if (selectedPetFriendly !== 'all') params.append('petFriendly', selectedPetFriendly);
+
+        const response = await fetch(`/api/products?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setProducts(data.products);
+          setError(null);
+        } else {
+          setError(data.error || 'Failed to fetch products');
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError('Failed to connect to the server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [selectedCategory, selectedSize, selectedDifficulty, selectedPetFriendly]);
 
   // Sample products - In production, fetch from MongoDB API
-  const products = [
+  const productsOld = [
     {
       _id: '1',
       name: 'Monstera Deliciosa',
@@ -184,19 +239,16 @@ export default function ShopPage() {
       rating: 4.8,
       reviews: 28,
       inStock: true,
-      difficulty: 'Easy',
+      careLevel: 'Easy',
+      lightRequirement: 'Low',
       petFriendly: true,
-      potColors: ['Taupe', 'Charcoal']
+      tags: ['bundle', 'collection', 'gift'],
+      stockQuantity: 10
     }
   ];
 
-  const filteredProducts = products.filter(product => {
-    if (selectedCategory !== 'all' && product.category !== selectedCategory) return false;
-    if (selectedSize !== 'all' && !product.size.includes(selectedSize)) return false;
-    if (selectedDifficulty !== 'all' && product.difficulty !== selectedDifficulty) return false;
-    if (selectedPetFriendly === 'true' && !product.petFriendly) return false;
-    return true;
-  });
+  // Filters are now applied server-side via API query params
+  // No need for client-side filtering anymore
 
   const categories = [
     { id: 'all', name: 'All Plants' },
@@ -303,19 +355,41 @@ export default function ShopPage() {
         )}
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-16">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          <p className="text-gray-600 mt-4">Loading plants...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <p className="font-semibold">Error loading products</p>
+          <p className="text-sm">{error}</p>
+          <p className="text-sm mt-2">Make sure MongoDB is running and you've seeded the database.</p>
+        </div>
+      )}
+
       {/* Results Count */}
-      <p className="text-gray-600 mb-4">
-        Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'plant' : 'plants'}
-      </p>
+      {!loading && !error && (
+        <p className="text-gray-600 mb-4">
+          Showing {products.length} {products.length === 1 ? 'plant' : 'plants'}
+        </p>
+      )}
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <ProductCard key={product._id} product={product} />
-        ))}
-      </div>
+      {!loading && !error && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {products.map((product) => (
+            <ProductCard key={product._id} product={product} />
+          ))}
+        </div>
+      )}
 
-      {filteredProducts.length === 0 && (
+      {/* No Results */}
+      {!loading && !error && products.length === 0 && (
         <div className="text-center py-16">
           <p className="text-gray-600 text-lg mb-4">No plants found matching your filters</p>
           <button

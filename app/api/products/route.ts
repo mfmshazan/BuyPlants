@@ -2,11 +2,41 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Product from '@/models/Product';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await dbConnect();
-    const products = await Product.find({ inStock: true }).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, products });
+    
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const size = searchParams.get('size');
+    const difficulty = searchParams.get('difficulty');
+    const petFriendly = searchParams.get('petFriendly');
+    
+    let filter: any = { inStock: true };
+    
+    if (category && category !== 'all') {
+      filter.category = category;
+    }
+    
+    if (size && size !== 'all') {
+      filter.size = { $regex: size, $options: 'i' };
+    }
+    
+    if (difficulty && difficulty !== 'all') {
+      filter.careLevel = difficulty;
+    }
+    
+    if (petFriendly === 'true') {
+      filter.petFriendly = true;
+    }
+    
+    const products = await Product.find(filter).sort({ createdAt: -1 });
+    
+    return NextResponse.json({ 
+      success: true, 
+      count: products.length,
+      products 
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(

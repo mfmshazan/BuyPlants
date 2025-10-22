@@ -16,9 +16,9 @@ interface Product {
   reviews?: number;
   inStock: boolean;
   badge?: string;
-  difficulty?: string;
+  careLevel?: string;
   petFriendly?: boolean;
-  potColors?: string[];
+  tags?: string[];
 }
 
 interface ProductCardProps {
@@ -85,10 +85,10 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="text-sm text-gray-600 uppercase font-medium">{product.size}</span>
         </div>
 
-        {/* Pot Colors */}
-        {product.potColors && product.potColors.length > 0 && (
+        {/* Care Level */}
+        {product.careLevel && (
           <div className="flex items-center gap-1 mb-3">
-            <span className="text-xs text-gray-500">{product.potColors.length} POT COLORS</span>
+            <span className="text-xs text-gray-500 uppercase">Care: {product.careLevel}</span>
           </div>
         )}
 
