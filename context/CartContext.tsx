@@ -14,63 +14,219 @@ export interface CartItem {
 interface CartContextType {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeFromCart: (id: string, size: string) => void;
+  updateQuantity: (id: string, size: string, quantity: number) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
+  loading: boolean;
+  syncCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Generate or get session ID for cart tracking
+function getSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  
+  let sessionId = localStorage.getItem('cartSessionId');
+  if (!sessionId) {
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('cartSessionId', sessionId);
+  }
+  return sessionId;
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string>('');
 
-  // Load cart from localStorage on mount
+  // Initialize session ID on mount
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
+    const id = getSessionId();
+    setSessionId(id);
   }, []);
 
-  // Save cart to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart]);
+  // Fetch cart from MongoDB on mount
+  const syncCart = async () => {
+    if (!sessionId) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/cart?sessionId=${sessionId}`);
+      const data = await response.json();
 
-  const addToCart = (item: CartItem) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((i) => i.id === item.id);
-      
-      if (existingItem) {
-        return prevCart.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
-        );
+      if (data.success && data.cart) {
+        // Convert MongoDB cart format to CartItem format
+        const cartItems: CartItem[] = data.cart.items.map((item: any) => ({
+          id: item.productId,
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          size: item.size,
+          quantity: item.quantity
+        }));
+        setCart(cartItems);
       }
-      
-      return [...prevCart, item];
-    });
+    } catch (error) {
+      console.error('Error syncing cart:', error);
+      // Fallback to localStorage
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        setCart(JSON.parse(savedCart));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeFromCart = (id: string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  useEffect(() => {
+    if (sessionId) {
+      syncCart();
+    }
+  }, [sessionId]);
+
+  // Backup to localStorage
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+  }, [cart, loading]);
+
+  const addToCart = async (item: CartItem) => {
+    try {
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          item: {
+            productId: item.id,
+            name: item.name,
+            price: item.price,
+            image: item.image,
+            size: item.size,
+            quantity: item.quantity
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        await syncCart(); // Refresh cart from server
+      } else {
+        // Fallback to local state
+        setCart((prevCart) => {
+          const existingItem = prevCart.find((i) => i.id === item.id && i.size === item.size);
+          
+          if (existingItem) {
+            return prevCart.map((i) =>
+              i.id === item.id && i.size === item.size 
+                ? { ...i, quantity: i.quantity + item.quantity } 
+                : i
+            );
+          }
+          
+          return [...prevCart, item];
+        });
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      // Fallback to local state
+      setCart((prevCart) => {
+        const existingItem = prevCart.find((i) => i.id === item.id && i.size === item.size);
+        
+        if (existingItem) {
+          return prevCart.map((i) =>
+            i.id === item.id && i.size === item.size 
+              ? { ...i, quantity: i.quantity + item.quantity } 
+              : i
+          );
+        }
+        
+        return [...prevCart, item];
+      });
+    }
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const removeFromCart = async (id: string, size: string) => {
+    try {
+      const response = await fetch(`/api/cart?sessionId=${sessionId}&productId=${id}&size=${size}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        await syncCart(); // Refresh cart from server
+      } else {
+        // Fallback to local state
+        setCart((prevCart) => prevCart.filter((item) => !(item.id === id && item.size === size)));
+      }
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      // Fallback to local state
+      setCart((prevCart) => prevCart.filter((item) => !(item.id === id && item.size === size)));
+    }
+  };
+
+  const updateQuantity = async (id: string, size: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(id);
+      removeFromCart(id, size);
       return;
     }
     
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.id === id ? { ...item, quantity } : item
-      )
-    );
+    try {
+      const response = await fetch('/api/cart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          productId: id,
+          size,
+          quantity
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        await syncCart(); // Refresh cart from server
+      } else {
+        // Fallback to local state
+        setCart((prevCart) =>
+          prevCart.map((item) =>
+            item.id === id && item.size === size ? { ...item, quantity } : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      // Fallback to local state
+      setCart((prevCart) =>
+        prevCart.map((item) =>
+          item.id === id && item.size === size ? { ...item, quantity } : item
+        )
+      );
+    }
   };
 
-  const clearCart = () => {
-    setCart([]);
+  const clearCart = async () => {
+    try {
+      const response = await fetch(`/api/cart?sessionId=${sessionId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCart([]);
+      }
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      setCart([]);
+    }
   };
 
   const getTotalPrice = () => {
@@ -86,6 +242,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateQuantity,
         clearCart,
         getTotalPrice,
+        loading,
+        syncCart
       }}
     >
       {children}

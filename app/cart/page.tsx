@@ -5,7 +5,16 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, getTotalPrice } = useCart();
+  const { cart, removeFromCart, updateQuantity, getTotalPrice, loading } = useCart();
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+        <p className="text-gray-600 mt-4">Loading your cart...</p>
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -49,14 +58,14 @@ export default function CartPage() {
 
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    onClick={() => updateQuantity(item.id, item.size, item.quantity - 1)}
                     className="w-8 h-8 rounded-full border border-gray-300 hover:bg-gray-100"
                   >
                     −
                   </button>
                   <span className="w-8 text-center">{item.quantity}</span>
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
                     className="w-8 h-8 rounded-full border border-gray-300 hover:bg-gray-100"
                   >
                     +
@@ -66,7 +75,7 @@ export default function CartPage() {
                 <div className="text-right">
                   <p className="font-bold text-lg">${(item.price * item.quantity).toFixed(2)}</p>
                   <button
-                    onClick={() => removeFromCart(item.id)}
+                    onClick={() => removeFromCart(item.id, item.size)}
                     className="text-red-600 hover:text-red-700 text-sm mt-2"
                   >
                     Remove
