@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Cart from '@/models/Cart';
+import { db } from '@/lib/database';
 
 // GET - Get cart by session ID
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
+    await db.connect();
 
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
@@ -17,16 +16,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let cart = await Cart.findOne({ sessionId });
-
-    // If cart doesn't exist, create empty cart
-    if (!cart) {
-      cart = await Cart.create({
-        sessionId,
-        items: [],
-        totalAmount: 0
-      });
-    }
+    // Use repository to get or create cart
+    const cart = await db.carts.getOrCreateCart(sessionId);
 
     return NextResponse.json({
       success: true,
@@ -44,7 +35,7 @@ export async function GET(request: NextRequest) {
 // POST - Add item to cart
 export async function POST(request: NextRequest) {
   try {
-    await dbConnect();
+    await db.connect();
 
     const body = await request.json();
     const { sessionId, item } = body;
@@ -64,31 +55,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let cart = await Cart.findOne({ sessionId });
-
-    if (!cart) {
-      // Create new cart with item
-      cart = await Cart.create({
-        sessionId,
-        items: [{ ...item, quantity: item.quantity || 1 }],
-        totalAmount: 0
-      });
-    } else {
-      // Check if item already exists in cart
-      const existingItemIndex = cart.items.findIndex(
-        (i) => i.productId.toString() === item.productId.toString() && i.size === item.size
-      );
-
-      if (existingItemIndex > -1) {
-        // Update quantity
-        cart.items[existingItemIndex].quantity += item.quantity || 1;
-      } else {
-        // Add new item
-        cart.items.push({ ...item, quantity: item.quantity || 1 });
-      }
-
-      await cart.save();
-    }
+    // Use repository to add item
+    const cart = await db.carts.addItem(sessionId, {
+      ...item,
+      quantity: item.quantity || 1
+    });
 
     return NextResponse.json({
       success: true,
@@ -107,7 +78,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update cart item quantity
 export async function PUT(request: NextRequest) {
   try {
-    await dbConnect();
+    await db.connect();
 
     const body = await request.json();
     const { sessionId, productId, size, quantity } = body;
@@ -119,35 +90,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const cart = await Cart.findOne({ sessionId });
+    // Use repository to update quantity
+    const cart = await db.carts.updateItemQuantity(sessionId, productId, size, quantity);
 
     if (!cart) {
       return NextResponse.json(
-        { success: false, error: 'Cart not found' },
+        { success: false, error: 'Cart or item not found' },
         { status: 404 }
       );
     }
-
-    const itemIndex = cart.items.findIndex(
-      (i) => i.productId.toString() === productId && i.size === size
-    );
-
-    if (itemIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Item not found in cart' },
-        { status: 404 }
-      );
-    }
-
-    if (quantity <= 0) {
-      // Remove item if quantity is 0 or less
-      cart.items.splice(itemIndex, 1);
-    } else {
-      // Update quantity
-      cart.items[itemIndex].quantity = quantity;
-    }
-
-    await cart.save();
 
     return NextResponse.json({
       success: true,
@@ -166,7 +117,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Remove item from cart or clear cart
 export async function DELETE(request: NextRequest) {
   try {
-    await dbConnect();
+    await db.connect();
 
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
@@ -180,7 +131,20 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const cart = await Cart.findOne({ sessionId });
+    let cart;
+    if (!productId) {
+      // Clear entire cart
+      cart = await db.carts.clearCart(sessionId);
+    } else {
+      // Remove specific item
+      if (!size) {
+        return NextResponse.json(
+          { success: false, error: 'Size is required to remove specific item' },
+          { status: 400 }
+        );
+      }
+      cart = await db.carts.removeItem(sessionId, productId, size);
+    }
 
     if (!cart) {
       return NextResponse.json(
@@ -189,36 +153,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (!productId) {
-      // Clear entire cart
-      cart.items = [];
-      await cart.save();
-
-      return NextResponse.json({
-        success: true,
-        message: 'Cart cleared',
-        cart
-      });
-    }
-
-    // Remove specific item
-    const itemIndex = cart.items.findIndex(
-      (i) => i.productId.toString() === productId && i.size === size
-    );
-
-    if (itemIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Item not found in cart' },
-        { status: 404 }
-      );
-    }
-
-    cart.items.splice(itemIndex, 1);
-    await cart.save();
-
     return NextResponse.json({
       success: true,
-      message: 'Item removed from cart',
+      message: productId ? 'Item removed from cart' : 'Cart cleared',
       cart
     });
   } catch (error: any) {
