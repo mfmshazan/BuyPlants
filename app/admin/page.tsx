@@ -35,7 +35,7 @@ export default function AdminDashboard() {
     image: '',
     category: 'Indoor',
     description: '',
-    size: 'Medium',
+    size: 'MD',
     careLevel: 'Easy',
     petFriendly: false,
     inStock: true,
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
           image: '',
           category: 'Indoor',
           description: '',
-          size: 'Medium',
+          size: 'MD',
           careLevel: 'Easy',
           petFriendly: false,
           inStock: true,
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Size
+                    Size <span className="text-gray-500 text-xs">(Select primary size)</span>
                   </label>
                   <select
                     name="size"
@@ -403,10 +403,13 @@ export default function AdminDashboard() {
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
-                    <option value="Small">Small</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Large">Large</option>
-                    <option value="XL">Extra Large</option>
+                    <option value="">Select Size</option>
+                    <option value="XS">Extra Small (XS)</option>
+                    <option value="SM">Small (SM)</option>
+                    <option value="MD">Medium (MD)</option>
+                    <option value="LG">Large (LG)</option>
+                    <option value="XL">Extra Large (XL)</option>
+                    <option value="XXL">Extra Extra Large (XXL)</option>
                   </select>
                 </div>
 

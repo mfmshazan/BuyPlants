@@ -39,7 +39,7 @@ const ProductSchema = new mongoose.Schema<IProduct>(
     size: {
       type: String,
       required: true,
-      enum: ['XS', 'SM', 'MD', 'LG', 'XL', 'XXL'],
+      // Flexible to support single sizes (SM, MD, LG) or comma-separated (SM,MD,LG)
     },
     image: {
       type: String,
