@@ -10,7 +10,8 @@ export interface ICartItem {
 }
 
 export interface ICart extends Document {
-  userId?: string; // For future authentication
+  userId?: string; // For authenticated users
+  userEmail?: string; // User's email address
   sessionId: string; // For guest users
   items: ICartItem[];
   totalAmount: number;
@@ -52,6 +53,11 @@ const CartSchema = new Schema<ICart>({
   userId: {
     type: String,
     required: false
+  },
+  userEmail: {
+    type: String,
+    required: false,
+    index: true
   },
   sessionId: {
     type: String,

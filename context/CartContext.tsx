@@ -11,6 +11,12 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface User {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 interface CartContextType {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
@@ -20,6 +26,10 @@ interface CartContextType {
   getTotalPrice: () => number;
   loading: boolean;
   syncCart: () => Promise<void>;
+  user: User | null;
+  login: (email: string, firstName?: string, lastName?: string) => void;
+  logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -40,11 +50,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string>('');
+  const [user, setUser] = useState<User | null>(null);
 
-  // Initialize session ID on mount
+  // Initialize session ID and user on mount
   useEffect(() => {
     const id = getSessionId();
     setSessionId(id);
+    
+    // Check for saved user
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
   }, []);
 
   // Fetch cart from MongoDB on mount
@@ -233,6 +250,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   };
 
+  const login = (email: string, firstName?: string, lastName?: string) => {
+    const userData: User = { email, firstName, lastName };
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
+  const isAuthenticated = user !== null;
+
   return (
     <CartContext.Provider
       value={{
@@ -243,7 +273,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         getTotalPrice,
         loading,
-        syncCart
+        syncCart,
+        user,
+        login,
+        logout,
+        isAuthenticated
       }}
     >
       {children}

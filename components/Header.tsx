@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
+import AuthModal from './AuthModal';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const { cart } = useCart();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { cart, user, isAuthenticated, logout } = useCart();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const cartItemsCount = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
@@ -132,6 +134,28 @@ export default function Header() {
 
           {/* Cart & Mobile Menu Button */}
           <div className="flex items-center space-x-4">
+            {/* User Auth Button */}
+            {isAuthenticated && user ? (
+              <div className="hidden md:flex items-center space-x-3">
+                <span className="text-sm text-gray-700">
+                  Hi, {user.firstName || user.email}
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-sm text-gray-600 hover:text-red-600 font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="hidden md:block text-gray-700 hover:text-green-600 font-medium"
+              >
+                Login
+              </button>
+            )}
+
             <Link href="/cart" className="relative">
               <svg className="w-6 h-6 text-gray-700 hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -201,9 +225,45 @@ export default function Header() {
             >
               Corporate Gifts
             </Link>
+
+            {/* Mobile Auth Button */}
+            {isAuthenticated && user ? (
+              <div className="py-2 border-t mt-2 pt-2">
+                <p className="text-sm text-gray-700 mb-2">Hi, {user.firstName || user.email}</p>
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="text-red-600 hover:text-red-700 font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setShowAuthModal(true);
+                  setIsMenuOpen(false);
+                }}
+                className="block py-2 text-green-600 hover:text-green-700 font-semibold border-t mt-2 pt-2"
+              >
+                Login / Sign Up
+              </button>
+            )}
           </nav>
         )}
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={(email, firstName, lastName) => {
+          const { login } = useCart();
+          login(email, firstName, lastName);
+        }}
+      />
     </header>
   );
 }
