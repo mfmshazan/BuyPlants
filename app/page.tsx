@@ -103,10 +103,10 @@ export default function HomePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: 'Pet-Friendly', href: '/shop?category=pet-friendly' },
-              { name: 'Low-Maintenance', href: '/shop?category=low-maintenance' },
-              { name: 'Cacti & Succulents', href: '/shop?category=cacti' },
-              { name: 'Gift Shop', href: '/shop?category=gifts' }
+              { name: 'Pet-Friendly', href: '/shop?category=Pet-Friendly' },
+              { name: 'Low-Maintenance', href: '/shop?category=Low-Maintenance' },
+              { name: 'Cacti & Succulents', href: '/shop?category=Cacti' },
+              { name: 'Plant Bundles', href: '/shop?category=Bundles' }
             ].map((category) => (
               <Link
                 key={category.name}

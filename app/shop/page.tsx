@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import ProductCard from '@/components/ProductCard';
 
 interface Product {
@@ -24,13 +25,43 @@ interface Product {
 }
 
 export default function ShopPage() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedSize, setSelectedSize] = useState('all');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
-  const [selectedPetFriendly, setSelectedPetFriendly] = useState('all');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Initialize state from URL parameters
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all');
+  const [selectedSize, setSelectedSize] = useState(searchParams.get('size') || 'all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState(searchParams.get('difficulty') || 'all');
+  const [selectedPetFriendly, setSelectedPetFriendly] = useState(searchParams.get('petFriendly') || 'all');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync state with URL params on mount and URL changes
+  useEffect(() => {
+    const category = searchParams.get('category') || 'all';
+    const size = searchParams.get('size') || 'all';
+    const difficulty = searchParams.get('difficulty') || 'all';
+    const petFriendly = searchParams.get('petFriendly') || 'all';
+    
+    setSelectedCategory(category);
+    setSelectedSize(size);
+    setSelectedDifficulty(difficulty);
+    setSelectedPetFriendly(petFriendly);
+  }, [searchParams]);
+
+  // Update URL when filters change (from dropdown selections)
+  const updateURL = (category: string, size: string, difficulty: string, petFriendly: string) => {
+    const params = new URLSearchParams();
+    if (category !== 'all') params.set('category', category);
+    if (size !== 'all') params.set('size', size);
+    if (difficulty !== 'all') params.set('difficulty', difficulty);
+    if (petFriendly !== 'all') params.set('petFriendly', petFriendly);
+    
+    const queryString = params.toString();
+    const newUrl = queryString ? `/shop?${queryString}` : '/shop';
+    router.push(newUrl, { scroll: false });
+  };
 
   // Fetch products from MongoDB API
   useEffect(() => {
@@ -39,12 +70,17 @@ export default function ShopPage() {
         setLoading(true);
         const params = new URLSearchParams();
         
+        console.log('🔍 Fetching with filters:', { selectedCategory, selectedSize, selectedDifficulty, selectedPetFriendly });
+        
         if (selectedCategory !== 'all') params.append('category', selectedCategory);
         if (selectedSize !== 'all') params.append('size', selectedSize);
         if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
         if (selectedPetFriendly !== 'all') params.append('petFriendly', selectedPetFriendly);
 
-        const response = await fetch(`/api/products?${params.toString()}`);
+        const url = `/api/products?${params.toString()}`;
+        console.log('📡 API URL:', url);
+        
+        const response = await fetch(url);
         const data = await response.json();
 
         if (data.success) {
@@ -252,10 +288,15 @@ export default function ShopPage() {
 
   const categories = [
     { id: 'all', name: 'All Plants' },
-    { id: 'Indoor', name: 'Indoor' },
-    { id: 'Bundles', name: 'Bundles' },
-    { id: 'best-sellers', name: 'Best Sellers' },
-    { id: 'new-arrivals', name: 'New Arrivals' },
+    { id: 'Indoor', name: 'Indoor Plants' },
+    { id: 'Outdoor', name: 'Outdoor Plants' },
+    { id: 'Cacti', name: 'Cacti & Succulents' },
+    { id: 'Pet-Friendly', name: 'Pet-Friendly' },
+    { id: 'Low-Maintenance', name: 'Low-Maintenance' },
+    { id: 'Bundles', name: 'Plant Bundles' },
+    { id: 'Pots', name: 'Pots & Planters' },
+    { id: 'Care-Kits', name: 'Plant Care Kits' },
+    { id: 'Tools', name: 'Tools & Accessories' },
   ];
 
   const sizes = [
@@ -288,7 +329,11 @@ export default function ShopPage() {
             <label className="block text-sm font-semibold mb-2 text-gray-700">Category</label>
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                const newCategory = e.target.value;
+                setSelectedCategory(newCategory);
+                updateURL(newCategory, selectedSize, selectedDifficulty, selectedPetFriendly);
+              }}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               {categories.map((cat) => (
@@ -302,7 +347,11 @@ export default function ShopPage() {
             <label className="block text-sm font-semibold mb-2 text-gray-700">Plant Size</label>
             <select
               value={selectedSize}
-              onChange={(e) => setSelectedSize(e.target.value)}
+              onChange={(e) => {
+                const newSize = e.target.value;
+                setSelectedSize(newSize);
+                updateURL(selectedCategory, newSize, selectedDifficulty, selectedPetFriendly);
+              }}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               {sizes.map((size) => (
@@ -316,7 +365,11 @@ export default function ShopPage() {
             <label className="block text-sm font-semibold mb-2 text-gray-700">Difficulty</label>
             <select
               value={selectedDifficulty}
-              onChange={(e) => setSelectedDifficulty(e.target.value)}
+              onChange={(e) => {
+                const newDifficulty = e.target.value;
+                setSelectedDifficulty(newDifficulty);
+                updateURL(selectedCategory, selectedSize, newDifficulty, selectedPetFriendly);
+              }}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               {difficulties.map((diff) => (
@@ -330,7 +383,11 @@ export default function ShopPage() {
             <label className="block text-sm font-semibold mb-2 text-gray-700">Pet Friendly</label>
             <select
               value={selectedPetFriendly}
-              onChange={(e) => setSelectedPetFriendly(e.target.value)}
+              onChange={(e) => {
+                const newPetFriendly = e.target.value;
+                setSelectedPetFriendly(newPetFriendly);
+                updateURL(selectedCategory, selectedSize, selectedDifficulty, newPetFriendly);
+              }}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="all">All Plants</option>
@@ -347,6 +404,7 @@ export default function ShopPage() {
               setSelectedSize('all');
               setSelectedDifficulty('all');
               setSelectedPetFriendly('all');
+              updateURL('all', 'all', 'all', 'all');
             }}
             className="mt-4 text-green-600 hover:text-green-700 font-semibold"
           >
@@ -398,6 +456,7 @@ export default function ShopPage() {
               setSelectedSize('all');
               setSelectedDifficulty('all');
               setSelectedPetFriendly('all');
+              updateURL('all', 'all', 'all', 'all');
             }}
             className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
           >

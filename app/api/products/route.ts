@@ -19,12 +19,16 @@ export async function GET(request: NextRequest) {
     const maxPrice = searchParams.get('maxPrice');
     const search = searchParams.get('search');
 
+    console.log('🔍 API Query Params:', { category, size, difficulty, petFriendly });
+
     if (category && category !== 'all') filters.category = category;
     if (size && size !== 'all') filters.size = size;
     if (difficulty && difficulty !== 'all') filters.careLevel = difficulty;
     if (petFriendly === 'true') filters.petFriendly = true;
     if (minPrice) filters.minPrice = parseFloat(minPrice);
     if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
+
+    console.log('🎯 Filters being used:', filters);
 
     // Use repository methods
     let products;
@@ -34,6 +38,11 @@ export async function GET(request: NextRequest) {
       products = await db.products.findWithFilters(filters);
     } else {
       products = await db.products.findAll({ inStock: true });
+    }
+
+    console.log(`📦 Found ${products.length} products`);
+    if (products.length > 0) {
+      console.log('📋 Product categories:', products.map(p => ({ name: p.name, category: p.category })));
     }
 
     return NextResponse.json({

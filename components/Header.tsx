@@ -40,22 +40,20 @@ export default function Header() {
       name: 'Plants',
       items: [
         { name: 'All Plants', href: '/shop' },
-        { name: 'Indoor Plants', href: '/shop?category=indoor' },
-        { name: 'Outdoor Plants', href: '/shop?category=outdoor' },
-        { name: 'Low Maintenance', href: '/shop?category=low-maintenance' },
-        { name: 'Pet Friendly', href: '/shop?category=pet-friendly' },
-        { name: 'Cacti & Succulents', href: '/shop?category=cacti' },
+        { name: 'Indoor Plants', href: '/shop?category=Indoor' },
+        { name: 'Outdoor Plants', href: '/shop?category=Outdoor' },
+        { name: 'Low Maintenance', href: '/shop?category=Low-Maintenance' },
+        { name: 'Pet Friendly', href: '/shop?category=Pet-Friendly' },
+        { name: 'Cacti & Succulents', href: '/shop?category=Cacti' },
       ]
     },
     {
       name: 'Care Tools',
       items: [
-        { name: 'Watering Cans', href: '/shop?category=watering-tools' },
-        { name: 'Plant Food & Fertilizer', href: '/shop?category=fertilizer' },
-        { name: 'Pots & Planters', href: '/shop?category=pots' },
-        { name: 'Soil & Potting Mix', href: '/shop?category=soil' },
-        { name: 'Pruning Tools', href: '/shop?category=pruning' },
-        { name: 'Plant Care Kits', href: '/shop?category=care-kits' },
+        { name: 'Plant Bundles', href: '/shop?category=Bundles' },
+        { name: 'Pots & Planters', href: '/shop?category=Pots' },
+        { name: 'Plant Care Kits', href: '/shop?category=Care-Kits' },
+        { name: 'Tools & Accessories', href: '/shop?category=Tools' },
       ]
     },
     {
@@ -129,6 +127,10 @@ export default function Header() {
             
             <Link href="/corporate-gifts" className="text-gray-700 hover:text-green-600 font-medium py-2">
               Corporate Gifts
+            </Link>
+
+            <Link href="/admin" className="text-gray-700 hover:text-green-600 font-medium py-2">
+              Admin
             </Link>
           </nav>
 
